@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace="com.dream.mangle.mapper.BulkMapper">
+
+	<!-- 답변없는 게시물 조회 페이징x  --><!-- 
+	<select id="selectBulkList" resultType="com.dream.mangle.domain.BulkVO">
+		SELECT BNO, BTITLE, BWRITER, BREGDATE,RBNO
+		FROM project.bulk
+		WHERE rbno IS NULL
+		order by bno DESC
+	</select> -->
+	
+	<!-- 답변없는 게시물 조회 페이징  -->
+	<select id="selectBulkList" resultType="com.dream.mangle.domain.BulkVO">
+	<![CDATA[
+		SELECT bno, btitle, bcontent, bwriter, bregDate,rbno
+		FROM (SELECT /*+ index_desc(a PK_BULK_BNO) */ rownum rn, bno, btitle, bcontent, bwriter,bregDate, rbno
+		      FROM project.bulk a
+			  WHERE rownum <= (#{pageNum} * #{rowPerPage} ) AND rbno IS null
+		      order by bno desc
+		   	  )	    		  	  
+		WHERE rn >= ((#{pageNum} * #{rowPerPage}) - ( #{rowPerPage} -1))
+		]]>
+	</select>
+	
+	<!-- 답글 조회 페이징x  -->
+	<select id="selectBulkReplyList" resultType="com.dream.mangle.domain.BulkVO">
+		SELECT BNO, BTITLE, BWRITER, BREGDATE,RBNO
+		FROM project.bulk
+		WHERE rbno >= 1
+		order by bno DESC
+	</select>
+	
+	<!-- 페이징 -->
+	<select id="selectRowAmountTotal" resultType="Long">
+		select count(*) totalCnt FROM project.bulk	
+	</select>
+	
+	<!-- 게시물 등록 -->
+	<insert id="insertBulk" parameterType="com.dream.mangle.domain.BulkVO">
+		<selectKey keyProperty="bno" order="BEFORE" resultType="long">
+				SELECT project.seq_project_bulk.nextval FROM dual
+		</selectKey>
+		INSERT INTO project.bulk VALUES
+		(#{bno},#{btitle},#{bwriter},#{bcontent},DEFAULT, null)
+	</insert>
+	
+	<!-- 특정 게시물 조회 -->
+	<select id="selectBulkDetail" resultType="com.dream.mangle.domain.BulkVO">
+		SELECT BNO, BTITLE, BCONTENT, BWRITER, BREGDATE, rbno
+		FROM project.bulk
+		WHERE bno = #{bno}
+	</select>
+	
+	<!-- 게시물 답글 -->
+	<insert id="insertBulkReply" parameterType="com.dream.mangle.domain.BulkVO">
+		<selectKey keyProperty="bno" order="BEFORE" resultType="long">
+				SELECT project.seq_project_bulk.nextval FROM dual
+		</selectKey>
+		INSERT INTO project.bulk VALUES(#{bno},#{btitle},#{bwriter},#{bcontent},DEFAULT, #{rbno})
+	</insert>
+
+	<!-- 게시물 수정 -->
+	<update id="updateBulk" parameterType="com.dream.mangle.domain.BulkVO">
+		UPDATE project.bulk
+		SET BTITLE   = #{btitle},
+    		BCONTENT = #{bcontent}
+		WHERE bno = #{bno}
+	</update>
+	
+	<!-- 게시물 삭제 -->
+	<delete id="deleteBulk">
+		delete project.bulk
+		where bno=#{bno}
+	</delete>
+	
+</mapper>

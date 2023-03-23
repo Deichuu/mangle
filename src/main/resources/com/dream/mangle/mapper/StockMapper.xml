@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- DAO 대신 매퍼인터페이스를 사용하는 경우, 
+     namespace 속성에 패키지이름이 포함된 인터페이스이름을 설정합니다-->
+<mapper namespace="com.dream.mangle.mapper.StockMapper">
+
+
+	<!-- 상품 등록 -->
+	<insert id="addProd" parameterType="com.dream.mangle.domain.ProductVO">
+		INSERT INTO project.product VALUES(
+		#{prodCode}, #{prodName}, #{producer}, #{stock}, #{price}, DEFAULT, #{citemtype}, #{categorized})
+	</insert>
+	
+	
+	<!-- 상품 목록 삭제 -->
+	<delete id="deleteProd">
+		delete from project.product where prodCode = #{prodCode}
+	</delete>
+	
+	
+	<!-- 재고 수량 수정 -->
+	<update id="modifyStock">
+		update project.product set stock = #{stock} where prodCode = #{prodCode}
+	</update>
+	
+	
+	<!-- 상품 목록 -->
+	<select id="getProdList" resultType="com.dream.mangle.domain.ProductVO">
+		select * from project.product
+	</select>
+
+
+</mapper>

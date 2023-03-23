@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+ <!-- DAO 대신 매퍼인터페이스를 사용하는 경우, 
+      namespace 속성에 패키지이름이 포함된 인터페이스이름을 설정합니다-->
+<mapper namespace="com.dream.mangle.mapper.BoardAttachFileMapper">
+
+
+	<!-- 파일 저장  -->
+	<insert id="insertUploadFile" parameterType="com.dream.mangle.domain.UploadFileVO">
+		INSERT INTO project.upload (uuid, uploadPath, fileName, fileType, mtombno)
+		VALUES(#{uuid},#{uploadPath},#{fileName},#{fileType},#{mtombno})
+	</insert>
+	
+	
+	<!-- 게시판 파일가져오기 -->
+	<select id="selectUploadFileList" resultType="com.dream.mangle.domain.UploadFileVO">
+		SELECT uuid,uploadPath,filename,filetype,mtombno
+		From project.upload
+		where mtombno = #{mtombno}
+	</select>
+	
+	
+	<!-- 파일 하나 삭제 -->	
+	<delete id="deleteUploadFile">
+		delete project.upload
+		where uuid = #{uuid}		
+	</delete>
+	
+	
+	<!-- 게시판에 있는 파일 다 삭제 -->
+	<delete id="deleteBoardUploadFiles">
+		delete project.upload
+		where mtombno = #{mtombno}
+	</delete>
+	
+	
+	<!-- 리뷰에 있는 파일 다 삭제 -->
+	<delete id="deleteReviewUploadFiles">
+		delete project.upload
+		where rno = #{rno}
+	</delete>
+
+
+</mapper>

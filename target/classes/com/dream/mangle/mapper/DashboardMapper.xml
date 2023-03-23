@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+ "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+ 
+<mapper namespace="com.dream.mangle.mapper.DashboardMapper"> <!-- 패키지명이 포함된 인터페이스 이름을 설정. -->
+
+
+	<select id="selectMemberCnt" resultType="java.lang.Long">
+		SELECT count(*) FROM project.member
+	</select>
+
+
+	<select id="selectNewMem" resultType="java.lang.Integer">
+		SELECT count(*)
+		FROM project.member
+		WHERE userregdate >= TO_CHAR(sysdate -7, 'yyyymmdd')
+	</select>
+	
+	
+	<select id="selectTotalSales" resultType="java.lang.Long">
+		SELECT sum(total) FROM(
+		SELECT o.prodcode, p.price*o.amount total
+		FROM project.orderdetail o join project.product p
+		on(o.prodcode = p.prodcode))
+	</select>
+	
+	
+	<select id="selectNewMtoM" resultType="java.lang.Integer">
+		SELECT count(*) - count(rbno) FROM project.MTOMBOARD
+	</select>
+	
+	
+	<select id="selectNewOrder" resultType="java.lang.Integer">
+		SELECT COUNT(*) FROM tbl_order WHERE TO_CHAR(orderdate, 'yyyy-mm-dd') = TO_CHAR(sysdate, 'yyyy-mm-dd')
+	</select>
+	
+	
+	<select id="selectDstatus" resultType="com.dream.mangle.domain.DeliCateVO">
+		SELECT CASE dstatus WHEN '0' THEN '배송준비중'
+		                    WHEN '1' THEN '배송중'
+		                    WHEN '2' THEN '배송 완료' END as cateDeli, count(*) as cnt
+		FROM project.delivery
+		GROUP BY DSTATUS
+	</select>
+	
+	
+	<select id="selectLowStock" resultType="com.dream.mangle.domain.ProductVO">
+		<![CDATA[
+		SELECT PRODCODE, PRODNAME, PRODUCER, STOCK, PRICE, RATINGAVG, CITEMTYPE FROM project.product
+		WHERE STOCK <= 3
+		]]>
+	</select>
+	
+	<select id="selectPerCate" resultType="com.dream.mangle.domain.DeliCateVO">
+		SELECT CASE SUBSTR( p.prodcode, instr(p.prodcode, '_')+1, 1) WHEN 'u' THEN '사진케이스'
+			    WHEN 'c' then '커스텀케이스' 
+			    ELSE '일반케이스'
+			    END as cateDeli , SUM(d.amount * p.price) as cnt
+		FROM project.orderdetail d join project.product p
+		ON (d.prodcode = p.prodcode)
+		GROUP BY SUBSTR( p.prodcode, instr(p.prodcode, '_')+1, 1)
+	</select>
+	
+	<select id="selectSalePerDay" resultType="com.dream.mangle.domain.PerSumVO">
+		<![CDATA[
+        		SELECT b.dt as orderDate, NVL(a.sale, 0) as sale 
+		from (select TO_CHAR(t.ORDERDATE, 'YYYY-MM-DD') as orderDate, sum(od.AMOUNT * p.price) as sale 
+		FROM project.tbl_order t join project.orderdetail od ON (t.ORDERID = od.ORDERID) 
+		join project.product p ON (od.PRODCODE = p.PRODCODE) 
+		group by TO_CHAR(t.ORDERDATE, 'YYYY-MM-DD') 
+		having TO_CHAR(t.ORDERDATE, 'YYYY-MM-DD') > TO_CHAR(sysdate-7, 'YYYY-MM-DD')) a 
+		RIGHT OUTER JOIN 
+		(SELECT to_char(sysdate - 11 + level + (select next_day(sysdate,1) - sysdate from dual),'YYYY-MM-DD') as dt
+		from dual
+		connect by level <= 7) b
+		ON(a.orderdate = b.dt) 
+		ORDER BY 1
+		]]>
+	</select>
+	
+	
+	<select id="selectSalePerMonth" resultType="com.dream.mangle.domain.PerSumVO">
+	<![CDATA[
+        SELECT b.dt as orderDate,
+		       NVL(a.sale, 0) as sale
+		from    (SELECT TO_CHAR(t.ORDERDATE, 'yyyy-mm') as orderdate, sum(od.AMOUNT * p.price) as sale
+		        FROM project.tbl_order t join project.orderdetail od ON (t.ORDERID = od.ORDERID)
+		                                join project.product p ON (od.PRODCODE = p.PRODCODE)
+		        WHERE t.ORDERDATE BETWEEN TO_CHAR(sysdate-365, 'yyyy-mm-dd') AND TO_CHAR(sysdate, 'yyyy-mm-dd')
+		        group by TO_CHAR(t.ORDERDATE, 'yyyy-mm'))a 
+		         RIGHT OUTER JOIN
+		        (SELECT TO_CHAR(ADD_MONTHS(sysdate-330, LEVEL - 1), 'yyyy-mm') AS dt FROM DUAL
+		CONNECT BY LEVEL <= 12) b 
+		        ON(a.orderdate = b.dt)
+		ORDER BY b.dt
+		]]>
+	</select>
+	
+	
+	<select id="selectSalePerYear" resultType="com.dream.mangle.domain.PerSumVO">
+	<![CDATA[
+		SELECT b.dt as orderDate,
+		       NVL(a.sale, 0) as sale
+		from    (SELECT TO_CHAR(t.ORDERDATE, 'yyyy') as orderdate, sum(od.AMOUNT * p.price) as sale
+		        FROM project.tbl_order t join project.orderdetail od ON (t.ORDERID = od.ORDERID)
+		                                join project.product p ON (od.PRODCODE = p.PRODCODE)
+		        group by TO_CHAR(t.ORDERDATE, 'yyyy'))a 
+		        
+		         RIGHT OUTER JOIN
+		        
+		        (SELECT TO_CHAR(SYSDATE+365, 'YYYY') - LEVEL AS dt
+		        FROM DUAL 
+		        CONNECT BY LEVEL <= 3) b 
+		               
+		        ON(a.orderdate = b.dt)
+		ORDER BY b.dt
+		]]>
+	</select>
+	
+	<select id="selectBestProduct" resultType="com.dream.mangle.domain.ProductVO">
+	    <![CDATA[
+	    SELECT prodcode, prodname, price, stock
+        FROM(
+            SELECT od.prodcode, p.prodname, p.price, count(*) as stock
+            FROM project.orderdetail od join project.product p on (od.prodcode = p.prodcode)
+            group by od.prodcode, p.prodname, p.price
+           order by 4 desc)
+        WHERE rownum<6
+        ]]>
+	</select>
+	
+	
+</mapper>

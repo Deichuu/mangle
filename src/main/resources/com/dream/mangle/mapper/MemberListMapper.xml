@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dream.mangle.mapper.MemberListMapper">
+
+	<resultMap type="com.dream.mangle.domain.MemberVO" id="mem">
+		<result column="userEmail" property="userEmail"/>
+		<result column="userName" property="userName"/>
+		<result column="userRegdate" property="userRegdate"/>
+		<result column="userBirth" property="userBirth"/>
+		<result column="userMobile" property="userMobile"/>
+		<result column="userCoupon" property="userCoupon"/>
+		<result column="userPoint" property="userPoint"/>
+
+		<collection property="authorityList" resultMap="auth"></collection>
+	</resultMap>
+
+	<resultMap type="com.dream.mangle.domain.AuthorityVO" id="auth">
+		<result column="userEmail" property="userEmail"/>
+		<result column="authority" property="authority"/>
+	</resultMap>
+	
+	<select id="selectAllMemberList" resultMap="mem">
+		select m.useremail, m.username, m.userregdate, m.userbirth, m.usermobile, m.usercoupon, m.userpoint ,a.authority
+		from project.member m 
+		join project.member_authorities a on (m.useremail=a.useremail)
+		
+	</select>
+
+
+	<select id="selectMemberSearch" resultMap="mem" parameterType="com.dream.mangle.common.paging.PagingDTO">
+		select m.useremail, m.username, m.userregdate, m.userbirth, m.usermobile, m.usercoupon, m.userpoint ,a.authority
+		from project.member m 
+		join project.member_authorities a on (m.useremail=a.useremail) 
+		where m.useremail like '%'||#{keyword}||'%' or m.usermobile like '%'||#{keyword}||'%' or m.username like '%'||#{keyword}||'%' 
+	</select>
+
+	<!-- 권한 변경 쿼리 -->
+	<update id="updateAuth" parameterType="com.dream.mangle.domain.AuthorityVO">
+		update project.member_authorities set authority = #{authority} where userEmail = #{userEmail}
+	</update>
+
+
+</mapper>

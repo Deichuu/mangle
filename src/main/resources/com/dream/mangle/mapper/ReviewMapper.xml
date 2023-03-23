@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace="com.dream.mangle.mapper.ReviewMapper">
+	<!-- #{ param1.변수명}  -->
+	<!-- 최신순 리뷰 표시  -->
+	<select id="selectReview" resultType="com.dream.mangle.domain.ReviewVO">
+	<![CDATA[
+		SELECT rno, userEmail, prodCode, rcontent, rlike,rregDate,rating
+		FROM (SELECT /*+ index_desc(a PK_RNO_Review) */ rownum rn, rno, userEmail, prodCode, rcontent,rlike, rregDate, rating
+		      FROM project.review a
+			  WHERE rownum <= (#{pageNum} * #{rowPerPage}) AND prodCode=#{prodCode}
+		      order by rno desc
+		   	  )	    		  	  
+		WHERE rn >= ((#{pageNum} * #{rowPerPage}) - ( #{rowPerPage} -1))
+		]]>
+	</select>
+	
+	<!-- 리뷰 총 개수 -->
+	<select id="selectTotalCnt" resultType="int">
+		SELECT COUNT(*) FROM project.review WHERE prodcode = #{reviewPagingDTO.prodCode}
+	</select>
+	
+	<!-- 리뷰 작성 -->
+	<insert id="insertReview" parameterType="com.dream.mangle.domain.ReviewVO">
+	<selectKey keyProperty="rno" order="BEFORE" resultType="long">
+				SELECT project.seq_review_rno.nextval FROM dual
+	</selectKey>
+		INSERT INTO project.review
+		VALUES(#{rno},#{userEmail},#{prodCode},#{rcontent},DEFAULT,DEFAULT,#{rating})
+	</insert>
+	
+	<!-- 리뷰 수정 -->
+	<update id="updateReview" parameterType="com.dream.mangle.domain.ReviewVO">
+		UPDATE project.review
+		set rcontent = #{rcontent},
+			rating = #{rating}
+		where rno = #{rno}
+	</update>
+	
+	<!-- 좋아요 1 상승 -->
+	<update id="likeUp">
+		update project.review set rlike = rlike + 1	where rno = #{rno}
+	</update>
+	
+	<!-- 리뷰 삭제 -->
+	<delete id="deleteReview">
+		DELETE project.review where rno = #{rno}
+	</delete>
+	
+	<!-- 제품 평점 업데이트 -->
+	<update id="updateProductRatingAVG">
+		update project.product
+		set ratingAVG = (select (rating/count) as RatingAVG
+		                 FROM (select count(Rating) as count, sum(Rating) as rating
+		                       from project.review
+		                       where prodCode = #{prodCode})
+		                )
+		where prodCode = #{prodCode}
+	</update>
+	
+	<!-- 제품 평점 가져오기 -->
+	<select id="selectRatingAvg" resultType="float" >
+		select ratingavg from project.product where prodcode = #{prodCode}
+	</select>
+</mapper>

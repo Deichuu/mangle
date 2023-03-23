@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dream.mangle.mapper.ShopMapper">
+
+	<select id="selectAllProd" resultType="com.dream.mangle.domain.ProductVO">
+	
+	  <![CDATA[
+		select prodcode, prodname, price, ratingAvg, producer, accType, citemcode from(
+	    	    select prodcode, prodname, price, ratingAvg, producer,
+	    							acctype, citemcode, ROWNUM rn
+				from (SELECT /*+ INDEX_ASC (a PK_PRODUCT) */  a.prodcode, a.prodname, a.price, a.ratingAvg, a.producer, cat.accType, cus.citemcode
+			            FROM project.product a
+			            join project.category cat on (a.categorized = cat.categorized)
+			            join project.custom cus on (a.citemtype = cus.citemtype)
+                        	
+            ]]> 
+    where substr(prodcode , -1) in( '1' , 'c' , 'u')
+		<if test="citemtype!=null and !citemtype.equals('')">AND a.citemtype = #{citemtype}</if>
+		<if test="categorized!=null and !categorized.equals('')">AND a.categorized = #{categorized}</if>
+		
+   	  <choose>		
+	  	<when test="sort=='pop'">order by ratingAvg desc</when>
+	  	<when test="sort=='row'">order by price asc</when>
+	  	<when test="sort=='high'">order by price desc</when>
+	  </choose>
+		  
+	  ) where
+	<choose>	  
+		<when test="keyword!=null and !keyword.equals('')">prodName Like '%'||#{keyword}||'%' AND</when>
+	</choose>
+	
+	<choose>
+		<when test="producer=='삼성'">PRODUCER = '삼성' AND</when>
+		<when test="producer=='애플'">PRODUCER = '애플' AND</when>
+	</choose>
+	 <![CDATA[
+		rownum <= #{pageNum}*#{rowPerPage} )
+		where rn >= (#{pageNum}*#{rowPerPage})-(#{rowPerPage}-1) 
+	 ]]>
+	
+	</select>
+
+
+	<!-- 게시물 출력 갯수 페이징 -->
+	<select id="selectRowAmountTotal" resultType="long">
+		SELECT COUNT(*) TOTALCNT FROM project.product
+		WHERE substr(prodcode , -1) in( '1' , 'c' , 'u')
+			<choose>
+				<when test="producer=='전체'"></when>
+				<when test="producer=='삼성'">AND PRODUCER = '삼성'</when>
+				<when test="producer=='애플'">AND PRODUCER = '애플'</when>
+			</choose>
+							
+			<choose>
+				<when test="citemtype==1">AND citemtype = '1'</when>
+				<when test="citemtype==2">AND citemtype = '2'</when>
+				<when test="citemtype==3">AND citemtype = '3'</when>
+			</choose>
+				
+			<choose>
+				<when test="categorized==1">AND categorized = '1' </when>
+				<when test="categorized==2">AND categorized = '2' </when>
+				<when test="categorized==3">AND categorized = '3' </when>
+			</choose>
+			
+			<choose>
+				<when test="scope=='T'.toString()">AND prodName Like '%'||#{keyword}||'%'</when>
+				<when test="sort=='pop'">order by ratingAvg desc</when>
+			  	<when test="sort=='row'">order by price asc</when>
+			  	<when test="sort=='high'">order by price desc</when>
+			</choose>
+	</select>
+	
+	
+	
+	<!-- 카테고리 타입 불러오기 -->
+	<!-- <resultMap type="com.dream.mangle.domain.CategoryVO" id="cate">
+		<result column="categorized" property="categorized"/>
+		<result column="accType" property="accType"/>
+	</resultMap>
+	
+	<resultMap type="com.dream.mangle.domain.CustomVO" id="cus">
+		<result column="citemCode" property="citemCode"/>
+		<result column="citemType" property="citemType"/>
+	</resultMap>
+	
+	<resultMap type="com.dream.mangle.domain.ProductVO" id="prod">
+		<result column="prodCode" property="prodCode"/>
+		<result column="prodName" property="prodName"/>
+		<result column="categorized" property="categorized"/>
+		<result column="citemtype" property="citemtype"/>
+		
+		<collection property="cateList" resultMap="cate"></collection>
+		<collection property="cusList" resultMap="cus"></collection>
+	</resultMap>
+	
+	<select id="selectCateType" parameterType="com.dream.mangle.domain.ProductVO" resultMap="prod">
+	
+		select prod.prodcode, prod.prodname, cat.acctype, cus.citemcode
+		from project.product prod join project.category cat on (prod.categorized = cat.categorized)
+                          join project.custom cus on (prod.citemtype = cus.citemtype)
+		where prod.citemtype=#{citemtype} and prod.categorized = #{categorized}
+	</select> -->
+	
+	
+	<!-- 제조사 필터	 -->
+	<!-- <select id="selectProducer" resultType="com.dream.mangle.domain.ProductVO">
+		select product.prodcode, product.prodname, product.price from project.product 
+		where PRODUCER = #{producer} order by 1 asc
+	</select> -->
+	
+<!-- 	
+	가격낮은정렬
+	<select id="selectRow" resultType="com.dream.mangle.domain.ProductVO">
+		select product.prodcode, product.prodname, product.price from project.product order by price asc
+	</select>
+	
+	가격높은정렬
+	<select id="selectHigh" resultType="com.dream.mangle.domain.ProductVO">
+		select product.prodcode, product.prodname, product.price from project.product order by price desc
+	</select>
+	
+	인기순정렬
+	<select id="selectPop" resultType="com.dream.mangle.domain.ProductVO">
+		select product.prodcode, product.prodname, product.price from project.product order by ratingAvg desc
+	</select> -->
+	
+</mapper>

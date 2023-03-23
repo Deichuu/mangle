@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:security="http://www.springframework.org/schema/security"
+	xsi:schemaLocation="http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security-5.4.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+<!-- 사용자 password 암호화 처리 빈: BCrypt 방식 암호화 -->
+	<bean id="bCryptPasswordEncoder" class="org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder"/>
+	
+<!-- 데이터베이스의 사용자 정보를 가져와서 userdetails 유형으로 변환하여 스프링 provider에게 전달 -->
+	<bean id="MemberDetailsService" class="com.dream.mangle.common.security.MemberDetailService"/>
+	
+<!-- AccessDeniedHandler 구현 클래스 빈 -->
+	<!-- <bean id = "myAccessDeniedHandler" class="com.dream.mangle.common.security.SuccessLoginHandle"/> -->
+	
+<!-- AuthenticationSuccessHandler 구현 클래스 빈 -->
+	<bean id = "successLoginHandler" class="com.dream.mangle.common.security.SuccessLoginHandle"/>
+	
+	<security:http> 
+		<security:csrf />
+						   <!-- pattern 속성에는 contextPath를 포함하지 않습니다.--> 
+		<security:intercept-url pattern="/" access="permitAll"/>
+		<security:intercept-url pattern="/notice/list" access="permitAll"/>
+		<security:intercept-url pattern="/event/list" access="permitAll"/>
+		<security:intercept-url pattern="/bulk/list" access="permitAll"/>
+		<security:intercept-url pattern="/mtomboard/list" access="permitAll"/>
+		<security:intercept-url pattern="/faqBoard/list" access="permitAll"/>
+		<security:intercept-url pattern="/shop/**" access="permitAll"/>
+		<security:intercept-url pattern="/stock/manage" access="hasAnyAuthority('ADMIN')"/>
+		<security:intercept-url pattern="/notice/register" access="hasAnyAuthority('ADMIN')" />
+		<security:intercept-url pattern="/event/register" access="hasAnyAuthority('ADMIN')" />
+		<security:intercept-url pattern="/faqBoard/register" access="hasAnyAuthority('ADMIN')" />
+		<security:intercept-url pattern="/bulk/register" access="hasAnyAuthority('USER')" />
+		<security:intercept-url pattern="/bulk/reply" access="hasAnyAuthority('ADMIN')" />
+		<security:intercept-url pattern="/mtomboard/register" access="hasAnyAuthority('USER')" />
+		<security:intercept-url pattern="/mtomboard/reply" access="hasAnyAuthority('ADMIN')" />
+		<security:intercept-url pattern="/cart/cartlist" access="hasAnyAuthority('USER')" />
+		<security:intercept-url pattern="/delivery/detail" access="hasAnyAuthority('USER')" />
+		<security:intercept-url pattern="/order/**" access="hasAnyAuthority('USER')" />
+		<security:intercept-url pattern="/login" access="isAnonymous()" /> 
+		<security:intercept-url pattern="/admin/**" access="hasAnyAuthority('ADMIN', 'ILLUSTRATOR')" />
+ 		<security:intercept-url pattern="/resources/**" access="permitAll" />
+ 	
+		<security:form-login login-page="/login" login-processing-url="/login" 
+ 							 default-target-url="/shop/index" />
+						<!-- 	 authentication-success-handler-ref="successLoginHandler" -->		
+		<security:logout logout-url="/logout" 
+				 logout-success-url="/shop/index"/> 
+		<security:remember-me data-source-ref="dataSource"
+							  remember-me-parameter="remember"
+							  token-validity-seconds="2592000"/>
+							  
+<!-- 		<security:access-denied-handler error-page="/accessForbiddenError"/> -->
+		<!-- <security:access-denied-handler ref="myAccessDeniedHandler"/> -->
+		
+	</security:http>
+	
+	<security:authentication-manager>
+		<security:authentication-provider user-service-ref="MemberDetailsService">
+			<security:password-encoder ref="bCryptPasswordEncoder"/>
+		</security:authentication-provider>
+	</security:authentication-manager>
+	
+</beans>

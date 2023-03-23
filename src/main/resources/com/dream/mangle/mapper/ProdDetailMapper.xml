@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace="com.dream.mangle.mapper.ProdDetailMapper">
+
+	<select id="selectProdScript" resultType="com.dream.mangle.domain.ProdDetailVO" >
+	
+		select b.prodCode, a.description from project.proddetail a 
+                                         join project.product b on (a.prodcode=b.prodcode)
+        where a.prodCode = #{prodCode}
+	</select>
+
+</mapper>
+

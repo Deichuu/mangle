@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+ "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+ 
+<mapper namespace="com.dream.mangle.mapper.EventMapper"> <!-- 패키지명이 포함된 인터페이스 이름을 설정. -->
+
+	<select id="selectEventList" resultType="com.dream.mangle.domain.EventVO">
+		<![CDATA[
+			SELECT EVENTNO, EVENTTITLE,  EVENTCONTENT, EVENTREGDATE, EVENTVIEW, EVENTENDFLAG FROM(
+			SELECT /*+ INDEX_DESC(a PK_EVENTNO) */rownum rn, eventNo, eventTitle, eventContent, eventRegDate, eventview, eventendflag
+			FROM project.event a
+			WHERE rownum <=#{pageNum}*#{rowPerPage}
+			)WHERE rn >= #{pageNum}*#{rowPerPage} - (#{rowPerPage}-1)
+		]]>
+	</select>
+	
+	<!-- SELECT /*+ INDEX_DESC(event PK_EVENTNO) */ eventNo, eventTitle, eventContent, eventRegDate, eventview, eventendflag
+		FROM project.event -->
+		
+	<select id="selectOneEvent" resultType="com.dream.mangle.domain.EventVO">
+		SELECT eventNo, eventTitle, eventContent, eventRegDate, eventview, eventendflag
+		FROM project.event WHERE eventNo=#{eventNo}
+	</select>
+	
+	<insert id="insertEventKey">
+		<selectKey keyProperty="eventNo" order="BEFORE" resultType="Integer">
+			SELECT project.seq_eventno.nextval FROM dual
+		</selectKey>
+		INSERT INTO project.event
+		VALUES(#{eventNo}, #{eventTitle}, #{eventContent}, default, default, default )
+	</insert>
+	
+	<update id="updateEventEndFlag">
+		UPDATE project.event
+		SET eventendflag = '0'
+		WHERE eventNo=#{eventNo}
+	</update>
+	
+	<update id="updateViewEvent">
+		UPDATE project.event
+		SET eventview = eventview+1 
+		WHERE eventNo=#{eventNo}
+	</update>
+	
+	<update id="updateEvent" >
+		UPDATE project.event
+		SET	eventTitle = #{eventTitle},
+			eventContent = #{eventContent}
+		WHERE eventNo=#{eventNo}
+	</update>
+	
+	<select id="selectAllCountEvent" resultType="int">
+		SELECT count(*) FROM project.event
+	</select>
+</mapper>

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+<mapper namespace="com.dream.mangle.mapper.NoticeMapper">
+
+	<select id="selectNoticeList" resultType="com.dream.mangle.domain.NoticeVO">
+	 <![CDATA[
+	 	select noticeNo,noticeTitle,noticeContent,noticeWriter,noticeDate,noticeViewCnt 
+	 	from (SELECT /*+ INDEX_DESC (a pk_notice) */ ROWNUM rn, a.* 
+		FROM project.notice_board a
+		where 
+	 ]]>
+		<trim prefix="(" suffix=") and" prefixOverrides="OR">
+			<foreach collection="scopeArray" item="scope">
+				<trim prefix="OR">	
+					<choose>
+						<when test="scope=='T'.toString()">noticeTitle Like '%'||#{keyword}||'%'</when>				
+						<when test="scope=='C'.toString()">noticeContent Like '%'||#{keyword}||'%'</when>
+						<when test="scope=='W'.toString()">noticeWriter Like '%'||#{keyword}||'%'</when>
+					</choose>
+				</trim> 
+			</foreach>
+		</trim>
+	 <![CDATA[
+		rownum <= #{pageNum}*#{rowPerPage} )
+		where rn >= (#{pageNum}*#{rowPerPage})-(#{rowPerPage}-1)
+	  ]]>
+	</select>
+
+	<!-- 게시물 출력 갯수 페이징 -->
+	<select id="selectRowAmountTotal" resultType="long">
+		SELECT COUNT(*) TOTALCNT FROM project.notice_board
+		<where>
+			<trim prefix="(" suffix=")" prefixOverrides="or">
+			<foreach collection="scopeArray" item="scope">
+				<trim prefix="OR">	
+					<choose>
+						<when test="scope=='T'.toString()">noticeTitle Like '%'||#{keyword}||'%'</when>				
+						<when test="scope=='C'.toString()">noticeContent Like '%'||#{keyword}||'%'</when>
+						<when test="scope=='W'.toString()">noticeWriter Like '%'||#{keyword}||'%'</when>
+					</choose>
+				</trim> 
+			</foreach>
+			</trim>
+		</where>	
+	</select>
+	
+	<select id="selectDetailNo" resultType="com.dream.mangle.domain.NoticeVO">
+		select * from project.notice_board where noticeNo = #{noticeNo}
+	</select>
+
+	<update id="updateNotice">
+		update project.notice_board set noticeTitle=#{noticeTitle} , noticeContent= #{noticeContent}, 
+		noticeWriter=#{noticeWriter}, noticeDate= default where noticeNo = #{noticeNo}
+	</update>
+
+	<insert id="insertNotice" parameterType="com.dream.mangle.domain.NoticeVO">
+		<selectKey keyProperty="noticeNo" order="BEFORE" resultType="long">
+	 		select  project.seq_notice.nextval from dual
+	 	</selectKey>
+		insert into project.notice_board values(
+		#{noticeNo},#{noticeTitle},#{noticeContent},#{noticeWriter},default,default)
+	</insert>
+
+	<delete id="deleteNotice">
+		delete from project.notice_board where noticeNo = #{noticeNo}
+	</delete>
+
+	<update id="upView">
+		update project.notice_board set noticeViewCnt = (noticeViewCnt + 1) where noticeNo = #{noticeNo} 
+	</update>
+	
+</mapper>

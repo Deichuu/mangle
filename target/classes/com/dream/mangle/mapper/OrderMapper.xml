@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace="com.dream.mangle.mapper.OrderMapper">
+
+	<!-- 주문정보 입력하기 -->
+	<insert id="insertOrder">
+		<selectKey keyProperty="orderId" order="BEFORE" resultType="String">
+				SELECT TO_CHAR(sysdate,'yyyymmdd')||LPAD(seq_order.nextval, 6, '0') FROM dual
+		</selectKey>
+		INSERT INTO project.tbl_order
+		VALUES (#{orderId}, #{userEmail},#{receiver}, #{reMobile}, #{reAddress}, default,${point},${coupon})
+	</insert>
+	
+	<!-- 주문 상세 정보 * 서브쿼리 지금은 카트 데이터가 다 들어가서 잘 다듬으면 굳이 for문 안돌려도 이걸로 한방에 끝낼수 있을듯--><!-- 
+	<insert id="insertOrderinfo">
+	 	insert into orderdetail(orderDetailNum, orderId, prodCode, amount)
+     		select orderdetail_seq.nextval, #{orderId}, prodCode, amount
+         		from cart
+	</insert> -->
+	
+	<!-- 주문 상세 정보-->
+	<insert id="insertOrderinfo">
+		insert into project.orderdetail values(#{orderId},#{prodCode},${amount},orderdetail_seq.nextval)
+	</insert>
+	
+	<!-- 카트 비우기 -->
+	<delete id="deleteCart">
+		delete from project.cart where userEmail=#{userEmail}
+	</delete>
+	
+	
+	<!-- 주문요약=카트목록 (상품이름과 상품가격 join, userEmail로 가져오기) resultMap 먼저 만들어야됨. 걍 VO만들고 처리했삼..... -->
+	<select id="selectNamePrice" resultType="com.dream.mangle.domain.OrderSelectVO">
+		SELECT b.prodName, b.price, a.amount, b.price*a.amount total, b.prodCode
+		FROM project.cart a join project.product b ON a.prodCode = b.prodCode   
+		WHERE userEmail=#{userEmail}
+	</select>
+	
+	
+
+	<!-- 모든 회원의 주문내역 조회 -->
+	<select id="selectOrderList" resultType="com.dream.mangle.domain.OrderVO">
+		SELECT orderId, userEmail, receiver, reMobile, reAddress, orderDate
+		FROM project.tbl_order
+	</select>
+	
+	<!-- 특정 회원의 주문내역 조회 -->
+	<select id="selectMyList" resultType="com.dream.mangle.domain.OrderAllLIstVO">
+		SELECT o.orderId, o.receiver, o.orderDate, prod.prodName, d.count-1 as total
+		FROM tbl_order o JOIN (SELECT odprod.orderid, odprod.count, ord.prodCode
+        		               FROM (SELECT od.orderid ,count(od.orderid) as count, min(od.orderdetailNum) as orderdetailnum
+                		             FROM orderdetail od join product prod on (od.prodCode = prod.prodCode)
+                        		     group by od.orderId
+                             		) odprod  JOIN orderdetail ord on (odprod.orderdetailnum = ord.orderdetailnum)
+                       	       Order by odprod.orderid
+                       		   ) d ON (o.orderId=d.orderId)
+                 		 Join Product prod On (d.prodCode = prod.prodcode)
+		WHERE o.userEmail = #{userEmail}
+		order by o.orderdate desc
+	</select>
+			
+	<!-- orderId를 통해 주문번호, 주문계정 등 받아옴 + 상품내역은 그 전 코드 그대로해서 받아오면 될듯. 이걸로 합쳐? 일단 ㄱㄱ -->
+	<select id="selectMyOrder" resultType="com.dream.mangle.domain.OrderVO">
+		SELECT ord.orderId, ord.userEmail, ord.receiver, ord.reMobile, ord.point, ord.coupon,
+							(ad.roadaddress || ' ' || ad.bname|| ' ' || ad.detailAddress) as reAddress, ord.orderDate
+		FROM project.tbl_order ord JOIN project.address ad on (ord.readdress = ad.address_id)
+		WHERE orderId = #{orderId}
+	</select>
+		
+	<!-- 딜리버리 테이블에 저장 -->
+	<insert id="insertDelivery" parameterType="com.dream.mangle.domain.OrderVO">
+		insert into project.delivery values (#{orderId} ,default,#{userEmail},0)
+	</insert>
+	
+	<!-- 카트에서 데이터 비운후 오더 디테일에서 주문정보 가져옴 -->
+	<select id="selectOrderDetailProduct" resultType="com.dream.mangle.domain.OrderSelectVO">
+		SELECT b.prodName, b.price, ord.amount, b.price*ord.amount total, b.prodCode
+		FROM project.orderDetail ord join project.product b ON (ord.prodCode = b.prodCode)
+		WHERE orderID = #{orderId}
+	</select>
+	
+	<!-- 주소정보를 DB에 저장 -->
+	<insert id="insertAddress" parameterType="com.dream.mangle.domain.AddressVO">		
+		insert into project.address
+		values(#{address_id}, #{zonecode},#{roadAddress},#{jibunAddress},#{bname},#{detailAddress})
+	</insert>
+	
+	<!-- 주문한 회원의 포인트, 쿠폰, 이름, 폰번호 가져오기 -->
+	<select id="selectUserInfo" resultType="com.dream.mangle.domain.MemberVO">
+		SELECT USERPOINT, USERCOUPON, userName, userMobile
+		FROM project.member
+		WHERE userEmail = #{userEmail}
+	</select>
+	
+	<!-- 저장한 어드레스 목록 부르기 -->
+	<select id="selectUserAddress" resultType="com.dream.mangle.domain.AddressVO">
+		SELECT * FROM project.address
+		WHERE address_id LIKE #{userEmail} || '%'
+	</select>
+	
+	<!-- 주문할때 포인트 계산 -->
+	<update id="updatePoint" parameterType="com.dream.mangle.domain.OrderVO">
+		UPDATE project.member
+		SET userPoint = #{point} + 100
+		WHERE userEmail = #{userEmail}
+	</update>	
+		
+	<!-- 회원별 현재 몇번 주문을 했는지 -->
+	<select id="orderCountMember" resultType="long">
+		SELECT count(*) from tbl_order where userEmail = #{userEmail}
+	</select>
+	
+	<!-- 주소가 몇개 있는지 -->
+	<select id="AddressCount" resultType="long">
+		SELECT count(*) from project.Address where Address_Id Like '${userEmail}%'
+	</select>
+	
+	<!-- 주소가 이미 저장되어 있는가 -->
+	<select id="IsAddressHas" resultType="int">
+		SELECT count(*) from Address where Address_Id = #{reAddress}
+	</select>
+	
+	<!-- 쿠폰을 썻으면 쿠폰제거 -->
+	<update id="useCoupon" parameterType="com.dream.mangle.domain.OrderVO">
+		update project.member set usercoupon = #{coupon} where useremail = #{userEmail}
+	</update>
+</mapper>

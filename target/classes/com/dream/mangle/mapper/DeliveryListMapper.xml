@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dream.mangle.mapper.DeliveryListMapper">
+
+	<resultMap type="com.dream.mangle.domain.OrderVO" id="order">
+		<result column="orderId" property="orderId"/>
+		<result column="userEmail" property="userEmail"/>
+		<result column="receiver" property="receiver"/>
+		<result column="reMobile" property="reMobile"/>
+		<result column="reAddress" property="reAddress"/>
+		<result column="orderDate" property="orderDate"/>
+
+		<collection property="deliveryList" resultMap="delivery"></collection>
+	</resultMap>
+
+	<resultMap type="com.dream.mangle.domain.DeliveryVO" id="delivery">
+		<result column="orderId" property="orderId"/>
+		<result column="dstatus" property="dstatus"/>
+		<result column="invoice" property="invoice"/>
+	</resultMap>
+	
+	<select id="selectAllDelivery" resultMap="order"> 
+		SELECT o.ORDERID,o.USEREMAIL, o.RECEIVER, o.REMOBILE, o.READDRESS, o.ORDERDATE, d.DSTATUS, d.invoice
+		FROM project.tbl_order o join project.delivery d on (o.ORDERID = d.ORDERID) ORDER BY o.ORDERDATE DESC
+		
+	</select>
+	
+	
+	<!-- 배송상태 변경 쿼리  -->
+	<update id="updateDelivery" parameterType="com.dream.mangle.domain.DeliveryVO">
+		UPDATE project.delivery SET dstatus=#{dstatus} WHERE orderId=#{orderId}
+	</update>
+	
+	<!-- 송장번호 업데이트 쿼리 -->
+	<update id="updateInvoice" parameterType="com.dream.mangle.domain.DeliveryVO">
+		UPDATE project.delivery SET invoice = #{invoice} WHERE orderId=#{orderId}
+	</update>
+	
+
+<!-- 일단 여기까지 완료 -->
+
+<!-- 
+
+	<select id="selectMemberSearch" resultMap="mem" parameterType="com.dream.mangle.common.paging.PagingDTO">
+		select m.useremail, m.username, m.userregdate, m.userbirth, m.usermobile, m.usercoupon, m.userpoint ,a.authority
+		from project.member m 
+		join project.member_authorities a on (m.useremail=a.useremail) 
+		where m.useremail like '%'||#{keyword}||'%' or m.usermobile like '%'||#{keyword}||'%' or m.username like '%'||#{keyword}||'%' 
+	</select>
+
+ -->
+
+
+</mapper>

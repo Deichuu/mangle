@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mybatis-spring="http://mybatis.org/schema/mybatis-spring"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://mybatis.org/schema/mybatis-spring http://mybatis.org/schema/mybatis-spring.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.3.xsd">
+<!-- 스프링이 3버전이라 마이바티스스프링이 자동으로 1.2로 설정됨. 버전을 지워주자. 픽스됨. 고쳐짐!-->
+
+<!-- sql문장 로깅용 hikariCP 접속 코드 -->
+	<bean id="hikariConfig" class="com.zaxxer.hikari.HikariConfig">
+		<property name="driverClassName" value="net.sf.log4jdbc.sql.jdbcapi.DriverSpy" />
+		<property name="jdbcUrl" value="jdbc:log4jdbc:oracle:thin:@localhost:1521:xe" />
+		<property name="username" value="hr"/>
+		<property name="password" value="oracle4U"/>
+	</bean>
+
+
+<!-- datasource 빈 생성. jdbc 설정이 저장된 hikariconfig빈을 주입받는다. -->
+	 <bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource" destroy-method="close">
+		<constructor-arg ref="hikariConfig" /><!-- 생성자 의존성 주입방식 -->
+	</bean>
+
+
+
+<!-- 커넥션 풀 관련 HikariCP 설정 bean구성 -->
+
+<!-- 방법1.jdbc 정보를 직접 설정 -->
+<!-- 애플리케이션 배포용. 개발이 완료되면 아래처럼. -->
+<!-- 1. jdbc 설정정보가 설정된 HikariConfig 빈 생성 --><!-- 
+	<bean id="hikariConfig" class="com.zaxxer.hikari.HikariConfig">
+		<property name="driverClassName" value="oracle.jdbc.OracleDriver"/>
+		<property name="jdbcUrl" value="jdbc:oracle:thin:@localhost:1521:xe" />
+		<property name="username" value="book_ex" />
+		<property name="password" value="book_ex"/> --><!-- setter 의존성 주입방식 -->
+<!-- 	</bean> -->
+	
+<!-- datasource 빈 생성. jdbc 설정이 저장된 hikariconfig빈을 주입받는다. -->
+	<!-- <bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource">
+		<constructor-arg ref="hikariConfig" />생성자 의존성 주입방식
+	</bean> -->
+<!-- 배포할때는 이 방법으로 해야 한다. -->
+<!-- 방법2. -->
+<!-- 1. jdbc.properties 파일에서 읽어 들이는 설정 --><!-- 
+<context:property-placeholder location="classpath:jdbc_config/jdbc.properties"/> -->
+
+	<!-- 1. jdbc 설정정보가 설정된 HikariConfig 빈 생성 --><!-- 
+	<bean id="hikariConfig" class="com.zaxxer.hikari.HikariConfig">
+		<property name="driverClassName" value="${jdbcHikari.driverClassName}"/>
+		<property name="jdbcUrl" value="${jdbcHikari.jdbcUrl}" />
+		<property name="username" value="${jdbcHikari.username}" />
+		<property name="password" value="${jdbcHikari.password}"/>
+	</bean> -->
+	
+<!-- datasource 빈 생성. jdbc 설정이 저장된 hikariconfig빈을 주입받는다. --><!-- 
+	<bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource">
+		<constructor-arg ref="hikariConfig" /> --><!-- 생성자 의존성 주입방식 -->
+	<!-- </bean> -->
+	
+	<!-- 마이바티스 스프링 연동: DAO 객체가 커넥션 풀에 커넥션 하나를 가져온다. -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" /> 
+		<property name="mapperLocations">
+			<list>
+				<value>classpath:com/dream/mangle/mapper/ArtistStatisticMapper.xml</value>
+				<value>classpath:com/dream/mangle/mapper/BoardAttachFileMapper.xml</value>
+				<value>classpath:com/dream/mangle/mapper/BulkMapper.xml</value>
+				<value>classpath:com/dream/mangle/mapper/CartMapper.xml</value>
+				<value>classpath:com/dream/mangle/mapper/DashboardMapper.xml</value>
+				<value>classpath:com/dream/mangle/mapper/DeliveryMapper.xml</value>
+				<value>classpath:com/dream/mangle/mapper/EventMapper.xml</value>
+				<value>classpath:com/dream/mangle/mapper/FAQmapper.xml</value>
+				<value>classpath:com/dream/mangle/mapper/MemberMapper.xml</value>
+				<value>classpath:com/dream/mangle/mapper/MtoMboardMapper.xml</value>
+				<value>classpath:com/dream/mangle/mapper/NoticeMapper.xml</value>
+				<value>classpath:com/dream/mangle/mapper/OrderMapper.xml</value>
+				<value>classpath:com/dream/mangle/mapper/productMapper.xml</value>
+				<value>classpath:com/dream/mangle/mapper/ReviewMapper.xml</value>
+				<value>classpath:com/dream/mangle/mapper/ShopMapper.xml</value>
+				<value>classpath:com/dream/mangle/mapper/StockMapper.xml</value>
+				<value>classpath:com/dream/mangle/mapper/uploadFileMapper.xml</value>
+				<value>classpath:com/dream/mangle/mapper/ProdDetailMapper.xml</value>
+				<value>classpath:com/dream/mangle/mapper/MemberListMapper.xml</value>
+				<value>classpath:com/dream/mangle/mapper/DeliveryListMapper.xml</value>
+			</list>
+		</property>
+	</bean>
+	<!-- 마이바티스 스프링 연동: sqlSessionFactory보다 쓰레드에 안전한 방법. 여기까지 쓰는게 좋다.-->
+	<bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate">
+		<constructor-arg  index="0" ref="sqlSessionFactory"/>
+	</bean>
+	
+<!-- 매퍼인터패이스 자동 빈 생성 -->
+<!-- 설정된 패키지에 DAO클래스를 대신하는 매퍼-인터페이스가 있습니다. -->
+	<mybatis-spring:scan base-package="com.dream.mangle.mapper"/>
+	
+<!-- 스프링 트랜잭션 기능 활성화 -->
+	<tx:annotation-driven/>
+<!-- Spring Transaction 관리자 빈(dataSource빈을 주입받음) 첫글자가 대문자만 아니면된다.--> 	
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	
+	<!-- 네이버 메일 설정 -->
+	<bean id="mailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">
+		<property name="host" value="smtp.naver.com" />
+		<property name="port" value="465"/>
+		<property name="username" value="goott_test@naver.com"/>
+		<property name="password" value="mangle*dream" />
+		
+		<property name="javaMailProperties">
+			<props>
+				<prop key="mail.smtp.auth">true</prop>
+				<prop key="mail.smtp.starttls.enable">true</prop>
+				<prop key="mail.smtps.checkserveridentity">true</prop>
+				<prop key="mail.smtps.ssl.trust">*</prop>
+				<prop key="mail.debug">true</prop>
+				<prop key="mail.smtp.socketFactory.class">javax.net.ssl.SSLSocketFactory</prop>
+			</props>
+		</property>
+	</bean>
+
+</beans>

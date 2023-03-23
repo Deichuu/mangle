@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace="com.dream.mangle.mapper.ProductMapper">
+
+	<!-- 상품 목록 조회 -->
+	<select id="selectProdList" resultType="com.dream.mangle.domain.ProductVO">
+		SELECT * FROM project.product
+		WHERE categorized = #{categorized}
+	</select>
+	
+	<!-- 특정 상품 조회(페이징 고려) -->
+	<select id="selectProd" resultType="com.dream.mangle.domain.ProductVO">
+		<![CDATA[			
+			SELECT PRODCODE, PRODNAME, PRODUCER, PRICE, RATINGAVG, CITEMTYPE, CATEGORIZED
+			FROM (SELECT /*+ INDEX_DESC(a PK_PRODUCT) */ rownum rn, PRODCODE, PRODNAME, PRODUCER, PRICE, RATINGAVG, CITEMTYPE, CATEGORIZED
+				  FROM PRODUCT a
+				  WHERE
+		]]>
+		
+			<trim prefix="(" suffix=") AND" prefixOverrides="OR">
+	     	 	<foreach item="scope" collection="scopeArray">
+	     	 		<trim prefix="OR">
+	     	 			<choose>
+	     	 				<when test="scope==''.toString()">PRODNAME LIKE '%' || #{keyword} || '%'</when>
+	     	 			</choose>
+	     	 		</trim>
+	     	 	</foreach>
+	     	 </trim>		
+		
+		<![CDATA[
+				  rownum <= (#{pageNum} * #{rowPerPage})
+      	 	   	 )
+		 	WHERE rn >= (#{pageNum} * #{rowPerPage}) - (#{rowPerPage}-1)			
+		]]>
+	</select>
+	
+	<!-- 상품 총 개수 조회(페이징) -->
+	<select id="selectTotal" resultType="int">
+		SELECT count(*) FROM project.product
+		<where>
+			<trim prefix="(" suffix=") AND" prefixOverrides="OR">
+	     	 	<foreach item="scope" collection="scopeArray">
+	     	 		<trim prefix="OR">
+	     	 			<choose>
+	     	 				<when test="scope==''.toString()">PRODNAME LIKE '%' || #{keyword} || '%'</when>
+	     	 			</choose>
+	     	 		</trim>
+	     	 	</foreach>
+	     	 </trim>
+		</where>
+	</select>
+	
+	
+	<!-- 상품 등록 -->
+	<insert id="insertProd">
+		INSERT INTO project.product
+		VALUES (#{prodCode}, #{prodName}, #{producer}, DEFAULT, DEFAULT, DEFAULT, #{citemcode}, #{categorized})
+	</insert>
+	
+	<!-- 특정 상품 상세페이지 이동 -->
+	<select id="selectdetailProd" resultType="com.dream.mangle.domain.ProductVO">
+		SELECT * FROM project.product
+		WHERE prodCode = #{prodCode}
+	</select>
+	
+	<!-- 상품 수정 -->
+	<update id="updeteprod">
+		UPDATE project.product
+		SET stock = #{stock}, 
+			price = #{price},
+			ratingAvg = #{ratingAvg}
+	</update>
+	
+	<!-- 상품 삭제(실제 삭제) -->
+	<delete id="deleteProd">
+		DELETE project.product
+		WHERE prodCode = #{prodCode}
+	</delete>
+
+	<!-- 인기 상품 -->	
+	<select id="selectRatingAvg" resultType="com.dream.mangle.domain.ProductVO">
+		<![CDATA[
+		SELECT *
+		FROM(SELECT *
+		        FROM project.product
+		        ORDER BY RATINGAVG DESC)
+		WHERE rownum <6
+		]]>
+	</select>
+	
+	
+</mapper>

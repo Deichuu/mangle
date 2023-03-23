@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- DAO 대신 매퍼인터페이스를 사용하는 경우, 
+     namespace 속성에 패키지이름이 포함된 인터페이스이름을 설정합니다-->
+<mapper namespace="com.dream.mangle.mapper.CartMapper">
+
+
+	<!-- 카트 추가 -->
+	<insert id="addCart">
+		insert into project.cart(userEmail, prodCode, amount)
+		values(#{userEmail}, #{prodCode}, #{amount}) 
+	</insert>
+	
+	
+	<!-- 카트 삭제 -->
+	<delete id="deleteCart">
+		delete from project.cart where cartId = #{cartId}
+	</delete>
+	
+	
+	<!-- 카트 수량 수정 -->
+	<update id="modifyAmount">
+		update project.cart set amount = #{amount} where cartId = #{cartId}
+	</update>
+	
+	
+	<!-- 카트 목록 -->
+	<select id="getCart" resultType="com.dream.mangle.common.cart.CartDTO">
+		select a.cartId, a.userEmail, a.prodCode, a.amount, b.prodName, b.price
+		from project.cart a left outer join project.product b on a.prodCode = b.prodCode
+		where userEmail = #{userEmail}	
+	</select>
+	
+	
+	<!-- 카트 확인 -->
+	<select id="checkCart" resultType="_int">
+		select count(*) from project.cart  
+		where userEmail = #{userEmail} and prodCode = #{prodCode}
+	</select>
+
+
+</mapper>

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace="com.dream.mangle.mapper.MemberMapper">
+
+	<resultMap id="authorityMap" type="com.dream.mangle.domain.AuthorityVO">
+		<result property="userEmail" column="useremail" />
+		<result property="authority" column="authority" />
+	</resultMap>
+	
+	<resultMap id="memberMap" type="com.dream.mangle.domain.MemberVO">
+		<result property="userEmail" column="useremail" />
+		<result property="userPW" column="userpw" />
+		<result property="userName" column="username"/>
+		<result property="userRegdate" column="USERREGDATE" />
+		<result property="userBirth" column="USERBIRTH" />
+		<result property="userMobile" column="USERMOBILE" />
+		<result property="userGrade" column="USERGRADE" />
+		<result property="userCoupon" column="usercoupon" />
+		<result property="userPoint" column="userpoint" />
+		<result property="enabled" column="enabled" />
+		
+		<collection property="authorityList" resultMap="authorityMap" /><!-- 권한 정보가 저장됨 -->
+	</resultMap>
+
+
+	<!-- 특정 회원 조회(스프링 시큐리티도 사용함) - OUTER JOIN을 사용할 이유가 없습니다. -->
+	<select id="selectMember" resultMap="memberMap">
+		<![CDATA[
+		SELECT mem.useremail, mem.userpw, mem.username, mem.USERREGDATE,
+		mem.USERBIRTH, mem.USERMOBILE, mem.USERGRADE, mem.usercoupon, mem.userpoint, 
+		mem.enabled, auth.authority
+		FROM member mem INNER JOIN member_authorities auth ON mem.useremail = auth.useremail
+		WHERE mem.useremail = #{userEmail}
+		]]>
+	</select>
+	
+	<!-- 회원 등록: 회원 등록 시 회원 권한 추가도 같이 수행 -->
+	<insert id="insertMember">
+		INSERT into project.member
+		VALUES(#{userEmail}, #{userPW}, #{userName}, DEFAULT, #{userBirth}, #{userMobile}, DEFAULT, DEFAULT, DEFAULT, DEFAULT)
+	</insert>
+	
+	<!-- 회원 권한 추가 -->
+	<insert id="insertMemberAuthority">
+		INSERT INTO member_authorities
+		VALUES (#{userEmail}, #{authority})
+	</insert>
+
+	<!-- 이메일이 이미 있는지 여부 -->	
+	<select id="selectUseremail" resultType="java.lang.Byte">
+		SELECT count(USEREMAIL) as cnt
+		FROM project.member
+		WHERE USEREMAIL = #{userEmail}
+	</select>
+	
+	<!-- 폰번호가 이미 있는지 여부 -->
+	<select id="selectUsermobile" resultType="java.lang.Byte">
+		SELECT count(USEREMAIL) as cnt
+		FROM project.member
+		WHERE USERMOBILE = #{userMobile}
+	</select>
+	
+	<!-- 회원정보수정(기존비번 일치여부) match사용 -->
+<!-- 	<select id="checkPw" resultType="com.dream.mangle.domain.MemberVO">
+		SELECT count(*) as isThere FROM project.member
+		WHERE userPw=#{userPW}
+	</select>
+	 -->
+	<!-- 회원 정보 수정 (비밀번호) -->
+	<update id="updatePw">
+		UPDATE project.member 
+		SET userPw=#{userPW} 
+		WHERE userEmail=#{userEmail}
+	</update>  
+	
+	<!-- 회원 정보 수정 (폰번호) -->
+	<update id="updateMobile">
+		UPDATE project.member
+	    SET	userMobile=#{userMobile}
+		WHERE userEmail=#{userEmail}
+	</update>
+	
+	<!--  모든 회원 조회 --> 
+	<select id="selectAllMember">
+		SELECT userEmail, userPw, userName, userRegDate, userBirth, userMobile, userGrade, userCoupon, userPoint
+		FROM project.member
+	</select> 
+	
+	<!-- 회원 탈퇴 -->
+	<delete id="deleteMember">
+		Delete FROM project.member where userEmail=#{userEmail}
+	</delete>
+	
+	<update id="updateCoupon">
+		UPDATE project.member
+		SET usercoupon = '1'
+		WHERE userEmail = #{userEmail} 
+	</update>
+</mapper>

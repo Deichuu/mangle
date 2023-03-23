@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dream.mangle.mapper.DeliveryMapper">
+
+<!-- delivery.jsp -->
+	<select id="selectDeliveryList" resultType="com.dream.mangle.domain.DeliveryVO">
+		select DISTINCT DE.orderId, NVL(DE.invoice,'준비중') AS invoice, cnt.count , DE.dstatus
+		from project.Delivery DE JOIN project.orderdetail Ord on (DE.orderid = Ord.orderid)
+        		                 JOIN (select de.orderId, Count(ord.amount) count
+                		               from project.Delivery DE join project.orderdetail Ord on (DE.orderid = Ord.orderid)
+                         		       where DE.USEREMAIL = #{userEmail}
+                              		   group by de.orderid
+                              		  ) cnt ON (DE.orderid = cnt.orderID)
+		where DE.USEREMAIL = #{userEmail}
+		order by DE.orderID DESC
+	</select>
+
+<!-- deliveryDetail.jsp -->
+	<resultMap type="com.dream.mangle.domain.ProductVO" id="pMap">
+		<result property="price" column="price"/>
+		<result property="prodCode" column="prodcode"/>
+		<result property="prodName" column="prodname"/>
+	</resultMap>
+	
+	<resultMap type="com.dream.mangle.domain.OrderDetailVO" id="odMap">
+		<result property="orderId" column="orderId"/>
+		<result property="amount" column="amount"/>
+		<result property="prodCode" column="prodcode"/>
+		<collection  property="productList"  resultMap="pMap"></collection>
+	</resultMap>
+	
+	<resultMap type="com.dream.mangle.domain.DeliveryVO" id="dMap">
+		<result property="orderId" column="ORDERID"/>
+		<result property="dstatus" column="dstatus"/>
+		
+		<collection property="order" resultMap="odMap"></collection>
+	</resultMap>
+	 
+	<select id="selectDeliveryDetail" resultMap="dMap">
+	select OD.orderid, OD.amount ,DE.dstatus, prod.price, prod.prodname
+		from project.delivery de 
+					join project.orderDetail od on (DE.ORDERID = OD.ORDERID)
+               		join project.product prod on (od.prodcode = prod.prodcode )
+			where od.orderId=#{orderId}
+	</select>
+
+<!-- 누계 -->
+	<select id="selectTotal" resultType="com.dream.mangle.domain.TotalVO">
+		select sum(amount) as count, sum( price * amount ) as totalPrice
+		from ( select distinct product.prodcode, (product.price) as price, orderdetail.amount as amount
+		        from project.product join project.orderdetail on (orderdetail.prodcode=product.prodcode)
+		        where orderdetail.orderid = #{orderId}) 
+	</select>
+
+<!-- 배송상태 업데이트 -->
+	<update id="updateDstatus">
+		update project.delivery set dstatus = #{dstatus} where orderId=#{orderId}
+	</update>
+</mapper>

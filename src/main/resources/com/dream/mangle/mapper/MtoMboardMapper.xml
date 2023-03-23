@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- DAO 대신 매퍼인터페이스를 사용하는 경우, 
+     namespace 속성에 패키지이름이 포함된 인터페이스이름을 설정합니다-->
+<mapper namespace="com.dream.mangle.mapper.MtoMboardMapper">
+
+
+<!-- 게시물 조회 - 검색-페이징 고려 -->
+ 	<select id="selectBoardList" resultType="com.dream.mangle.domain.MtoMboardVO">
+		<![CDATA[
+			SELECT bno, btitle, bwriter, bregDate, bmodDate, bviewsCnt, bdelFlag, breplyCnt 
+			FROM ( SELECT /*+ index_desc(a PK_MTOMBOARD) */ rownum rn, bno, btitle, bwriter, bregDate, bmodDate, bviewsCnt, bdelFlag, breplyCnt 
+				   FROM MTOMBOARD a
+			       WHERE
+		]]>
+
+		<trim  prefix="("  suffix=") AND" prefixOverrides="OR" >
+			<foreach collection="scopeArray" item="scope">
+				<trim prefix="OR">
+					<choose>
+						<when test="scope=='T'.toString()">btitle LIKE '%' || #{keyword} || '%'</when>
+						<when test="scope=='C'.toString()">bcontent LIKE '%' || #{keyword} || '%'</when>
+						<when test="scope=='W'.toString()">bwriter LIKE '%' || #{keyword} || '%'</when>
+					</choose>
+				</trim>
+			</foreach>
+		</trim>		
+		<![CDATA[			             
+			       	  rownum <= ( #{pageNum} * #{rowPerPage} ) AND rbno IS null
+			       	  order by bno desc
+			      ) 
+			WHERE rn >= ( #{pageNum} * #{rowPerPage} ) - ( #{rowPerPage} -1 )		
+		]]>
+	</select>
+	
+	<!-- 리뷰글 조회 페이징x  -->
+	<select id="selectReplyList" resultType="com.dream.mangle.domain.MtoMboardVO">
+		SELECT BNO, BTITLE, BWRITER, BREGDATE, Bmoddate, BVIEWSCNT, BDELFLAG ,RBNO
+		FROM project.mtomboard
+		WHERE rbno >= 1
+		order by bno DESC
+	</select>
+	
+
+<!-- 게시물 총 개수 조회(검색 - 페이징): 삭제 요청된 행 포함 -->
+	<select id="selectTotalRowCnt" resultType="long">
+		SELECT count(*) totalCnt FROM project.mtomboard	
+		<where> 
+			<trim  prefix="("  suffix=")" prefixOverrides="OR" >
+				<foreach collection="scopeArray" item="scope">
+					<trim prefix="OR">
+						<choose>
+							<when test="scope=='T'.toString()">btitle LIKE '%' || #{keyword} || '%'</when>
+							<when test="scope=='C'.toString()">bcontent LIKE '%' || #{keyword} || '%'</when>
+							<when test="scope=='W'.toString()">bwriter LIKE '%' || #{keyword} || '%'</when>
+						</choose>
+					</trim>
+				</foreach>
+			</trim>
+		</where>	
+	</select>
+	
+
+<!-- 게시물 등록 - selectKey 이용함 -->
+	<insert id="insertBoardSelectKey" parameterType="com.dream.mangle.domain.MtoMboardVO">
+		<selectKey keyProperty="bno" order="BEFORE" resultType="long">
+			SELECT project.seq_mtomboard.nextval FROM dual
+		</selectKey>
+		INSERT INTO project.mtomboard
+		VALUES (#{bno}, #{btitle}, #{bcontent}, #{bwriter},
+        		DEFAULT,DEFAULT,DEFAULT,DEFAULT,DEFAULT, DEFAULT)
+	</insert>
+
+
+<!-- 특정 게시물 조회 -->	
+	<select id="selectBoard" resultType="com.dream.mangle.domain.MtoMboardVO">
+		    SELECT * FROM project.mtomboard WHERE bno = #{bno} 
+	</select>
+
+
+<!-- 특정 게시물 수정 -->
+	<update id="updateBoard">
+		UPDATE project.mtomboard
+		SET btitle = #{btitle}, bcontent = #{bcontent}, bmodDate = DEFAULT
+		WHERE bno = #{bno}
+	</update>
+	
+	
+<!-- 특정 게시물 삭제 -->
+	<delete id="deleteBoard">
+		DELETE FROM project.mtomboard WHERE bno = #{bno}	
+	</delete>
+	
+	
+<!-- 특정 게시물 삭제 요청 - 해당 글의 bdelFlag을 1로 수정 -->
+	<update id="updateBdelFlag">
+		UPDATE project.mtomboard SET bdelflag = 1 WHERE bno = #{bno}	
+	</update>
+
+
+<!-- 특정 게시물 조회 수 증가 -->	
+	<update id="updateBviewsCnt">
+		UPDATE project.mtomboard SET bviewscnt = (bviewscnt + 1) WHERE bno = #{bno} 
+	</update>
+
+
+<!-- 게시물의 댓글 개수 수정: 댓글추가 시에 #{amount}에 1, 댓글삭제 시 #{amount}에 -1 이 각각 전달됨 -->
+	<update id="updateBReplyCnt">
+		UPDATE project.mtomboard
+		SET BREPLYCNT = BREPLYCNT + #{amount}
+		WHERE bno = #{bno} AND bdelFlag = 0
+	</update>
+	
+
+<!-- 게시물 답글 -->
+	<insert id="insertMtomReply" parameterType="com.dream.mangle.domain.MtoMboardVO">
+		<selectKey keyProperty="bno" order="BEFORE" resultType="long">
+				SELECT project.seq_mtomboard.nextval FROM dual
+		</selectKey>
+		INSERT INTO project.mtomboard(bno, btitle, bwriter, bcontent,bregDate , rbno)
+		VALUES(#{bno},#{btitle},#{bwriter},#{bcontent},DEFAULT, #{rbno})
+	</insert>
+
+
+<!-- 
+	
+
+	
+    //게시물 삭제(관리자) – 사용자 삭제 요청된 게시물(bdelFlag = 1) 전체 삭제
+    public int deleteAllBoardSetDeleted();
+
+    //특정 게시물 조회수 증가
+    public void updateBviewsCnt(long bno);
+
+
+
+ -->
+
+
+</mapper>

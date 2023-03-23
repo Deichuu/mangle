@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace="com.dream.mangle.mapper.FAQmapper">
+
+
+	<!-- 말머리 검색 쿼리 -->
+	<select id="selectCate" resultType="com.dream.mangle.domain.FAQboardVO">
+		select * from project.faq_board where boardCate=#{boardCate}
+	</select>
+	
+	
+
+	
+	<!-- 게시물 조회하기 - 목록 (페이징 고려 추가 전) -->
+<!-- 	<select id="selectFaqList" resultType="com.dream.mangle.domain.FAQboardVO">
+		SELECT faqNo, faqTitle, faqContent, faqWriter, faqDate, faqViewCnt FROM project.FAQ_board ORDER BY faqNo DESC
+	</select> -->
+	
+	
+	<!-- 게시물 조회하기 - 목록 (페이징 고려) -->
+	<select id="selectFaqList" resultType="com.dream.mangle.domain.FAQboardVO">
+		<![CDATA[
+			SELECT faqNo,faqTitle,faqContent,faqWriter,faqDate,faqViewCnt,boardCate
+			FROM (SELECT /*+ index_desc(a pk_faqno) */ rownum rn, faqNo,faqTitle,faqContent,faqWriter,faqDate,faqViewCnt,faqDelFlag,boardCate
+	     			FROM project.FAQ_board a
+	      			WHERE 
+	      	]]>		
+	      			
+ 		<trim prefix="(" suffix=") AND" prefixOverrides="OR">
+	 		<choose>
+	 			<when test="boardCate != null"> boardCate = #{boardCate}</when>
+	 		</choose>
+      		<foreach collection="scopeArray" item="scope">
+      			<trim prefix="OR">
+      				<choose>
+      					<when test="scope=='T'.toString()">faqTitle LIKE '%'|| #{keyword} || '%'</when>
+      					<when test="scope=='C'.toString()">faqContent LIKE '%'|| #{keyword} || '%'</when>
+      					<when test="scope=='W'.toString()">faqWriter LIKE '%'|| #{keyword} || '%'</when>
+      					
+      				</choose>
+      			</trim>
+      		</foreach>
+      	</trim>
+	      	<![CDATA[		
+	      			rownum<=( #{pageNum} * #{rowPerPage} )  ) b
+			WHERE rn>=( #{pageNum}*#{rowPerPage} ) - ( #{rowPerPage}-1 )
+		]]>
+	</select>
+	
+	
+	
+	<!-- 게시물 총 개수 조회(페이징): 삭제 요청된 행 포함 -->
+		<select id="selectRowAmountTotalFaq" resultType="long">
+		<![CDATA[
+		SELECT count(*) totalCnt FROM project.FAQ_board
+		]]>
+			<where>
+				<trim prefix="(" suffix=")" prefixOverrides="OR">
+				<choose>
+					<when test="boardCate != null and !boardCate.equals('')"> boardCate = #{boardCate}</when>
+				</choose>
+					<foreach item='scope' collection="scopeArray">
+						<trim prefix="OR">
+							<choose>
+								
+								<when test="scope == 'T'.toString()">faqTitle LIKE '%'||#{keyword}||'%'</when>
+								<when test="scope == 'C'.toString()">faqContent LIKE '%'||#{keyword}||'%'</when>
+								<when test="scope == 'W'.toString()">faqWriter LIKE '%'||#{keyword}||'%'</when>
+							</choose>
+						</trim>
+					</foreach>
+				</trim>
+			</where>
+		</select>
+	
+	<!-- 게시물 등록 (selectKey이용) , jdbcType=VARCHAR -->
+	<insert id="insertFaqSelectKey" parameterType="com.dream.mangle.domain.FAQboardVO">
+		<selectKey keyProperty="faqNo" order="BEFORE" resultType="int">
+			SELECT project.FAQ_board_seq1.nextval FROM dual
+		</selectKey>
+		INSERT INTO project.FAQ_board
+		VALUES (#{faqNo},#{faqTitle},#{faqContent},#{faqWriter},DEFAULT, DEFAULT,DEFAULT, #{boardCate})
+	</insert>
+	
+	
+	<!-- 특정 게시물 조회 -->
+	<select id="selectFaq" resultType="com.dream.mangle.domain.FAQboardVO">
+	SELECT * FROM project.FAQ_board WHERE faqNo=#{faqNo}
+	</select>
+	
+	
+	<!-- 특정 게시물 수정 -->
+	<update id="updateFaq" parameterType="com.dream.mangle.domain.FAQboardVO">
+		UPDATE project.FAQ_board
+		SET faqTitle=#{faqTitle}, faqContent=#{faqContent} 
+		WHERE faqNo=#{faqNo}
+	</update>
+	
+	<!-- 게시물 삭제  -->
+	<delete id="deleteFaq">
+		DELETE FROM project.faq_board WHERE faqNo=#{faqNo}
+	</delete>
+	
+	
+	<!-- 특정 게시물 조회수 증가 -->
+	<update id="updateViewCntFaq">
+		UPDATE project.FAQ_board
+		SET faqViewCnt = faqViewCnt + 1
+		WHERE faqNo=#{faqNo} 
+	</update>
+
+</mapper>

@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace="com.dream.mangle.mapper.ArtistStatisticMapper">
+
+	<resultMap type="com.dream.mangle.domain.TotalVO" id="TotalMap">
+		<result property="totalPrice" column="totalPrice" />
+	</resultMap>
+
+	<resultMap type="com.dream.mangle.domain.ProductVO" id="productMap">
+		<result property="prodCode" column="prodCode" />
+		<result property="prodName" column="prodName" />
+		<result property="price" column="price" />
+		<result property="ratingAvg" column="ratingAvg" />		
+		<result property="accType" column="accType" />
+			
+		<collection property="total" resultMap="TotalMap" />
+	</resultMap>
+
+	<!-- 개인 작가 통계 -->
+	<select id="selectArtistProduct" resultMap="productMap">
+		SELECT p.PRODCODE,p.PRODNAME, p.PRICE, p.RATINGAVG, cat.accType, sum(od.amount) as totalPrice
+		FROM project.product p join project.orderdetail od on (p.PRODCODE = od.PRODCODE)
+		                       join project.category cat on (p.categorized = cat.categorized)
+		where p.producer = #{producer}
+		group by p.PRODCODE, p.PRICE, p.RATINGAVG, cat.ACCTYPE, p.PRODNAME
+	</select>
+	
+	<resultMap type="com.dream.mangle.domain.ProductVO" id="detailProductMap">
+		<result property="prodCode" column="prodCode" />
+		<result property="prodName" column="prodName" />		
+		<result property="producer" column="producer" />
+		<result property="price" column="price" />
+		<result property="ratingAvg" column="ratingAvg" />		
+	</resultMap>
+	
+	<resultMap type="com.dream.mangle.domain.OrderDetailVO" id="orderDetailMap">
+		<result property="orderId" column="orderId" />
+		<result property="prodCode" column="prodCode" />
+		<result property="amount" column="amount" />
+		
+		<collection property="productList" resultMap="detailProductMap" />
+	</resultMap>
+
+	<resultMap type="com.dream.mangle.domain.OrderVO" id="orderMap">
+		<result property="orderId" column="orderId" />
+		<result property="orderDate" column="orderDate" />
+			
+		<collection property="orderDetailList" resultMap="orderDetailMap" />
+	</resultMap>	
+	
+	<!-- 개인 작가 오늘 들어온 주문 확인-->
+	<select id="selectArtistToday" resultMap="orderMap">
+		SELECT od.orderId, prod.prodName, prod.price, odt.amount, prod.ratingAvg, prod.producer, od.orderdate
+		FROM project.tbl_order od join project.orderdetail odt on (od.orderId = odt.orderId)
+		                          join project.product prod on (odt.prodCode = prod.prodCode)
+		WHERE TO_DATE(od.orderDate,'yyyy/MM/dd') = TO_DATE(sysdate,'yyyy/MM/dd') AND prod.producer = #{producer}
+	</select>
+	
+	<!-- 개인 작가 오늘 들어온 주문 총 개수-->
+	<select id="selectArtistTodayCount" resultType="com.dream.mangle.domain.TotalVO">
+		SELECT SUM(odt.amount) as count, SUM(prod.price*odt.amount) AS totalPrice
+		FROM project.tbl_order od join project.orderdetail odt on (od.orderid = odt.orderid)
+		                          join project.product prod on (odt.prodcode = prod.prodcode)
+		WHERE TO_DATE(od.orderdate,'yyyy/MM/dd') = TO_DATE(sysdate,'yyyy/MM/dd') AND prod.producer = #{producer}
+	</select>
+	
+	<!-- 카테고리별 판매액 -->
+	<select id="selectTotalCategory" resultType="com.dream.mangle.domain.TotalVO">
+		select CASE substr(prod.prodcode, 1,1) WHEN 's' then '삼성 핸드폰 케이스'
+                                       WHEN 'a' then '애플 핸드폰 케이스'
+                                       WHEN 'b' then '블루투스 이어폰 케이스' 
+                                       ELSE '그립톡' end as category ,
+		        sum(d.amount * prod.price) as totalPrice
+		from project.orderdetail d join project.product prod on (d.prodcode = prod.prodcode)
+		where prod.producer = #{producer}
+		group by substr( prod.prodcode, 1,1)
+	</select>
+	
+	<!-- 하루 주기 일주일 판매 -->
+	<select id="selectPerDay" resultType="com.dream.mangle.domain.TotalVO">
+		<![CDATA[	
+		SELECT b.dt as orderDate, NVL(a.sale, 0) as totalPrice 
+		from (select TO_CHAR(t.ORDERDATE, 'YYYY-MM-DD') as orderDate, sum(od.AMOUNT * p.price) as sale 
+		      FROM project.tbl_order t join project.orderdetail od ON (t.ORDERID = od.ORDERID) 
+		                               join project.product p ON (od.PRODCODE = p.PRODCODE) 
+		            where p.producer = #{producer}
+		      group by TO_CHAR(t.ORDERDATE, 'YYYY-MM-DD') 
+		      having TO_CHAR(t.ORDERDATE, 'YYYY-MM-DD') > TO_CHAR(sysdate-7, 'YYYY-MM-DD')) a 
+		RIGHT OUTER JOIN 
+		      (select to_char(sysdate - 9 + level + (select next_day(sysdate,1) - sysdate from dual),'YYYY-MM-DD') as dt
+		       from dual
+		       connect by level <= 7) b       
+		       ON(a.orderdate = b.dt) 
+		ORDER BY 1
+		]]>
+	</select>
+	
+	<!-- 한달 주기 판매 -->
+	<select id="selectPerMonth" resultType="com.dream.mangle.domain.TotalVO">
+		<![CDATA[
+			SELECT b.dt as orderDate, NVL(a.sale, 0) as totalPrice
+			from   (SELECT TO_CHAR(t.ORDERDATE, 'yyyy-mm') as orderdate, sum(od.AMOUNT * p.price) as sale
+			         FROM project.tbl_order t join project.orderdetail od ON (t.ORDERID = od.ORDERID)
+			                                  join project.product p ON (od.PRODCODE = p.PRODCODE)
+			         WHERE t.ORDERDATE BETWEEN TO_CHAR(sysdate-365, 'yyyy-mm-dd') AND TO_CHAR(sysdate+1, 'yyyy-mm-dd')
+			           AND p.producer = #{producer}
+			         group by TO_CHAR(t.ORDERDATE, 'yyyy-mm'))a 
+			RIGHT OUTER JOIN
+			        (SELECT TO_CHAR(ADD_MONTHS(sysdate-335, LEVEL - 1), 'yyyy-mm') AS dt FROM DUAL
+			         CONNECT BY LEVEL <= 12) b 
+			         ON(a.orderdate = b.dt)
+			order by b.dt
+		]]>
+	</select>
+	
+	<!-- 1년 주기 판매 -->
+	<select id="selectPerYear" resultType="com.dream.mangle.domain.TotalVO">
+		<![CDATA[
+			SELECT b.dt as orderDate, NVL(a.sale, 0) as totalPrice
+			from  (select TO_CHAR(t.orderDate, 'yyyy') as orderDate, sum(od.AMOUNT * p.price) as sale
+			       FROM project.tbl_order t join project.orderdetail od ON (t.ORDERID = od.ORDERID)
+			                                join project.product p ON (od.PRODCODE = p.PRODCODE)
+			       where p.producer = #{producer}
+			       group by TO_CHAR(t.orderDate, 'yyyy'))a 
+			RIGHT OUTER JOIN              
+			          (SELECT TO_CHAR(add_months(sysdate, 12), 'YYYY') - LEVEL AS dt
+			           FROM DUAL 
+			           CONNECT BY LEVEL <= 3) b ON(a.orderDate = b.dt)
+			order by b.dt
+		]]>
+	</select>
+</mapper>
